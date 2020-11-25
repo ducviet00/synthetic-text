@@ -1,0 +1,9 @@
+keras
+tensorflow
+numpy
+opencv-python
+scipy
+imgaug
+pillow
+fonttools
+tqdm
