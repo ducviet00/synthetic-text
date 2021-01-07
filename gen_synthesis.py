@@ -1,5 +1,6 @@
 import imgaug.augmenters as iaa
 import os
+import string
 import traceback
 from gen_tools.draw import draw_noise_for_crnn, draw_shadow_full, noise_blur
 from scipy import ndimage
@@ -115,8 +116,8 @@ def random_padding_v2(len_text, max_len):
 
 def get_shadow_color(r, g, b):
     h, s, v = colorsys.rgb_to_hsv(r/255., g/255., b/255.)
-    s = random.uniform(40, 60)
-    v = random.uniform(40, 60)
+    s = random.uniform(30, 50)
+    v = random.uniform(30, 50)
     r, g, b = colorsys.hsv_to_rgb(h/360., s/100., v/100.)
     return [int(r*255), int(g*255), int(b*255)]
 
@@ -138,12 +139,12 @@ def draw_text_v3(img, text, xy, font_size, font, chars_color, background=False, 
     width_text, height_text = font.getsize(text)
     (text_x_offset, text_y_offset) = font.getoffset(text)
 
-    if shadow and background:
+    if shadow and background and random.random() < config.SHADOW_RATIO:
         shadow_color = get_shadow_color(*chars_color)
         hex_shadow = rgb2hex(*shadow_color)
         xi = random.choice([-1, 0, 1])
         yi = random.choice([-1, 0, 1])
-        for i in range(1, width_text//20):
+        for i in range(1, width_text//25):
             draw.text((-text_x_offset + xy[0] + i*xi, -text_y_offset + xy[1] +
                        i*yi), text, font=font, fill=hex_shadow, direction=direction)
 
@@ -445,9 +446,9 @@ def get_color(invert):
 def invert_bg(img):
     if isinstance(img, Image.Image):
         h, s, v = img.convert('HSV').split()
-        h = (np.mean(h) + 180 + random.uniform(-20, 20)) % 360
+        h = (np.mean(h) + 180 + random.uniform(-5, 5)) % 360
         s = random.randrange(90, 100)
-        v = (np.mean(v) + 50 + random.uniform(-20, 20)) % 100
+        v = (100 - np.mean(v) - random.uniform(-5, 5)) % 100
 
         rgb = [int(i*255) for i in colorsys.hsv_to_rgb(h/360., s/100., v/100.)]
         
@@ -659,12 +660,12 @@ def gen_noise_cut_text(img):
     return img
 
 def read_file(path):
-    with open(path) as input:
-        lines = input.read().splitlines()
+    with open(path, 'r') as input:
+        lines = input.readlines()
     # return lines
     filter_lines = set()
     for line in lines:
-        filter_lines.add(str(line))
+        filter_lines.add(line.strip())
     return list(filter_lines)
 
 
@@ -750,19 +751,20 @@ def get_supported_fonts(text, font_dict):
 if __name__ == "__main__":
     list_font_path = glob.glob(r'fonts/*')
     font_dict = load_all_fonts(list_font_path)
-
     # sentence_path = "train_japanese_sentences.txt"
-    old_char_path = "vnmesevocab.txt"
+    word_path = "vnmesevocab.txt"
 
     dict_gen = {}
-    repeat_num = 10
+    repeat_num = 100
     using_random_font = True
     using_random_sentence = False
 
-    dict_gen['sample'] = read_file(old_char_path)  # 4518*35
+    dict_gen['vnwords'] = read_file(word_path)  
     # dict_gen['sentence'] = read_file(sentence_path) #4518*35
-    out_path = "/content/drive/My Drive/1M_SCANNED_TEXT/"
+    # out_path = "./testscencetext"
+    out_path = "/home/aimenext2/viethd/211220-1M5-SCANNED-TEXT"
     list_supported_font = get_supported_fonts('đẳỡựạựỡớờỵý', font_dict)
+    # print(list_supported_font)
     # #### All in one folder
     # save_path = os.path.join(out_path, 'a_small_test')
     # if not os.path.isdir(save_path):
@@ -781,7 +783,8 @@ if __name__ == "__main__":
 
     # Each key is a separate folder
     for gen in dict_gen.keys():
-        save_path = os.path.join(out_path, '100k_PART4')
+        # save_path = os.path.join(out_path, 'DATA')
+        save_path = out_path
         if not os.path.isdir(save_path):
             os.makedirs(save_path)
         out_images_save = os.path.join(save_path, "imgs")
@@ -793,27 +796,44 @@ if __name__ == "__main__":
         count = 0
         with open(os.path.join(save_path, "annotates.txt"), "w+") as ann:
             # Endof Each key is a separate folder
-            print(
-                "\n***\n{} have: {} sentence".format(gen, len(dict_gen[gen])))
-            print('Finding supported font...')
             number_sens = len(dict_gen[gen])
+            print(
+                "\n***\n{} have: {} sentence".format(gen, number_sens))
+            print('Finding supported font...')
             # number_sens = 3
-            list_supported_font = get_supported_fonts('đỡạ', font_dict)
-            list_supported_font = font_support_telephone(list_supported_font)
+            # list_supported_font = get_supported_fonts('đỡạ', font_dict)
+            # list_supported_font = font_support_telephone(list_supported_font)
             print('Supported font: ', len(list_supported_font))
             for i in tqdm(range(number_sens)):
                 # sentence = random.choice(dict_gen[gen])
-                sentence = dict_gen[gen][i]
-                # # Get min index for random slicing sentence. Set 0 for single char
-                # min_index = get_min_required_char_index(sentence, required_chars)
-                min_index = 0
-                # # Endof Get min index
-                if not min_index and min_index != 0:
-                    continue
+
                 if using_random_font:
                     for repeat_time in range(repeat_num):
+                        sentence = dict_gen[gen][i]
                         if not sentence:
                           continue  
+                        randnum = str(random.randint(0, 10))
+                        if random.random() < 0.30:
+                            sentence = sentence.lower()
+                        elif random.random() < 0.65:
+                            sentence = sentence.upper()
+                        # if random.random() < 0.25:
+                        #     sentence += ' ' + random.choice(string.punctuation)
+                        # elif random.random() < 0.35:
+                        #     sentence = random.choice(string.punctuation) + ' ' + sentence
+                        # elif random.random() < 0.55:
+                        #     sentence = '\"' + sentence + '\"'
+                        # elif random.random() < 0.65:
+                        #     sentence = sentence + randnum
+                        # elif random.random() < 0.75:
+                        #     sentence = randnum + sentence
+                        # elif random.random() < 0.85:
+                        #     sentence = randnum + ' ' + sentence
+                        # elif random.random() < 0.95:
+                        #     sentence = sentence + ' ' + randnum
+                        # else:
+                        #     sentence = randnum + ' ' + sentence + ' ' + randnum
+                            
                         img = None
                         while img is None:
                             font_path = random.choice(list_supported_font)
@@ -829,8 +849,8 @@ if __name__ == "__main__":
                                                 height_variant=False,
                                                 augment=True,
                                                 generating_test=False,
-                                                shadow=False,
-                                                texture=False
+                                                shadow=True,
+                                                texture=True
                                                 )
                         img = img[...,::-1]
                         img = img.astype(np.uint8)
@@ -841,8 +861,8 @@ if __name__ == "__main__":
                             count += 1
                         else:
                             img = None
-                      # if not count % 100:
-                      #     print('count', end='\n', flush=True)
+                        if not count % 10000:
+                            print(count, end='\n', flush=True)
 
                 else:
                   continue

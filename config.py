@@ -1,5 +1,10 @@
 import os
 
+#SCENCE TEXT
+BOLD_BG_RATIO = 0.0
+SHADOW_RATIO = 0.5
+BLUR_CHAR_RATIO = 0
+CUT_TEXT_NOISE_RATIO = 0
 # CHARS_LIST_PATH = 'resources/chars/extra_char_list.txt'
 # CHARS_LIST_PATH = 'resources/chars/char_list_INFD20191022.txt'
 # CHARS_LIST_PATH = 'resources/chars/char_list_INFD20190806.txt'
@@ -96,10 +101,6 @@ FOCUS_CHARS_RATIO = 0
 INSERT_SPACE_RATION = 0.0
 INSERT_SPACE_MAX_NO = 3
 # =====================================================================================================================
-BOLD_BG_RATIO = 0.0
-
-BLUR_CHAR_RATIO = 0
-CUT_TEXT_NOISE_RATIO = 0
 
 # ================= Settings and constants for transfer learning ======================================================
 TRANSFER_LEARNING_TYPE_OLD_TO_NEW = "TRANSFER_LEARNING_TYPE_OLD_2_NEW"
