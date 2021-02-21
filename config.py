@@ -1,9 +1,9 @@
 import os
 
 #SCENCE TEXT
-BOLD_BG_RATIO = 0.0
+BOLD_BG_RATIO = 1.0
 SHADOW_RATIO = 0.5
-BLUR_CHAR_RATIO = 0
+BLUR_CHAR_RATIO = 0.1
 CUT_TEXT_NOISE_RATIO = 0
 # CHARS_LIST_PATH = 'resources/chars/extra_char_list.txt'
 # CHARS_LIST_PATH = 'resources/chars/char_list_INFD20191022.txt'

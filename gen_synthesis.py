@@ -21,7 +21,7 @@ from keras.preprocessing import image
 import re
 import config
 import signal
-
+import lmdb
 
 KIND_TEXT = 'text'
 
@@ -401,7 +401,7 @@ def gen_background(img):
     bg_dir = random.choice(backgrounds)
     bg = Image.open(bg_dir)
     size = max(img.size[0], img.size[1])*2
-    bg.thumbnail((size, size), Image.ANTIALIAS)
+    bg.resize((size, size), Image.ANTIALIAS)
     xstart = random.randrange(0, bg.size[0]-img.size[0])
     ystart = random.randrange(0, bg.size[1]-img.size[1])
     # random crop
@@ -756,65 +756,56 @@ def get_supported_fonts(text, font_dict):
             list_supported_font.append(font)
     return list_supported_font
 
+def writeCache(env, cache):
+    with env.begin(write=True) as txn:
+        for k, v in cache.items():
+            txn.put(k.encode(), v)
 
 if __name__ == "__main__":
-    # signal.signal(signal.SIGALRM, handler)
-    # signal.alarm(10)
+    vocab = 'aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFgGhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsStTuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ0123456789!"#$%&''()*+,-./:;<=>?@[\]^_`{|}~ '
+
     list_font_path = glob.glob(r'fonts/*')
     list_font_path += ["fonts"]
     font_dict = load_all_fonts(list_font_path)
-    # sentence_path = "train_japanese_sentences.txt"
-    word_path = "vnmesevocab.txt"
-
     dict_gen = {}
-    repeat_num = 10000
+    repeat_num = 50
     using_random_font = True
-    using_random_sentence = False
 
-    dict_gen['vnwords'] = read_file(word_path)  
-    # dict_gen['sentence'] = read_file(sentence_path) #4518*35
-    # out_path = "./testscencetext"
-    out_path = "/mnt/disk4/viethd/1.25B-SCANNED-UNIWORD"
-    list_supported_font = get_supported_fonts('đẳỡựạựỡớờỵý', font_dict)
-    # Each key is a separate folder
+    dict_gen['vnwords'] = read_file("vnmesevocab.txt")
+    dict_gen['wikiuni'] = read_file("unigram.txt")  
+
+    out_path = "/mnt/disk3/viethd/100M-SCANCED-UNIGRAM/train_ocr"
+    env = lmdb.open(out_path, map_size=2e+12) #2 Terabyte
+
+    list_supported_font = get_supported_fonts('vocab', font_dict)
+    
+    #lmdb cache
+    cache = {}
+    count = 0
     for gen in dict_gen.keys():
-        save_path = out_path
-        if not os.path.isdir(save_path):
-            os.makedirs(save_path)
-        out_images_save = os.path.join(save_path, "imgs")
-        if not os.path.isdir(out_images_save):
-            os.makedirs(out_images_save)
-        else:
-            print('\n\n Careful: Save folder already exist!!')
-            exit()
-        count = 0
-        # Endof Each key is a separate folder
+        out_images_save = os.path.join(out_path, "imgs")
         number_sens = len(dict_gen[gen])
-        print(
-            "\n***\n{} have: {} sentence".format(gen, number_sens))
+        print("\n***\n{} have: {} sentence".format(gen, number_sens))
 
         # Uncomment to limit the number of words to gen
-        # number_sens = 20
+        # number_sens = 1000
         print('Supported font: ', len(list_supported_font))
-        for i in range(number_sens):
-            ann = open(os.path.join(save_path, f"annotates_{i}.txt"), "w")
-            # sentence = random.choice(dict_gen[gen])
-            print(f"DONE: {i}/{number_sens} GENERATED: {count} imgs")
-            sentence = dict_gen[gen][i]
-            for repeat_time in trange(repeat_num):
+        for i in trange(number_sens):
+            for repeat_time in range(repeat_num):
                 sentence = dict_gen[gen][i]
-            
                 if not sentence:
+                    continue
+                if len(sentence) >= 18:
                     continue  
                 lower_upper = random.random()
-                if lower_upper < 0.50:
+                if lower_upper < 0.30:
                     sentence = sentence.lower()
-                elif lower_upper < 0.85:
-                        sentence = sentence.capitalize() 
-                elif lower_upper < 0.95:
+                elif lower_upper < 0.60:
+                    sentence = sentence.capitalize() 
+                else:
                     sentence = sentence.upper()
 
-                if random.random() < 0.4:
+                if random.random() < 0.1:
                     space = random.choice([' ', ''])
                     if random.random() < 0.2:
                         sentence += space + random.choice(string.punctuation)
@@ -828,47 +819,66 @@ if __name__ == "__main__":
                     if random.random() < 0.2:
                         sentence = str(int(random.gauss(5., 5.))) + space + sentence
                     
-                if len(sentence) >= 20:
+                if len(sentence) >= 18:
                     sentence = dict_gen[gen][i]
                 # while True:
                 img = None
                 while img is None:
-                    font_path = random.choice(list_supported_font)
-                    img = paint_txt_v51(sentence,
-                                        max_len=20,
-                                        font_path=font_path,
-                                        w=1920,
-                                        h=32,
-                                        rotate=True,
-                                        invert=False,
-                                        table=True,
-                                        height_variant=False,
-                                        augment=True,
-                                        generating_test=False,
-                                        shadow=True,
-                                        texture=True
-                                        )
+                    try:
+                        font_path = random.choice(list_supported_font)
+                        img = paint_txt_v51(sentence,
+                                            max_len=20,
+                                            font_path=font_path,
+                                            w=1920,
+                                            h=32,
+                                            rotate=True,
+                                            invert=False,
+                                            table=True,
+                                            height_variant=False,
+                                            augment=True,
+                                            generating_test=False,
+                                            shadow=True,
+                                            texture=True
+                                            )
+                    except:
+                        img = None
+                        break
                 if img is None:
                     continue
                 img = img[...,::-1]
                 img = img.astype(np.uint8)
-                name_img = '{}_{}.png'.format(count, gen)
-                # if img.save(os.path.join(out_images_save, name_img)):
-                if cv2.imwrite(os.path.join(out_images_save, name_img), img):
-                    ann.write(name_img + "\t" + sentence + "\n")
-                    count += 1
+                name_img = '{}_{}.jpg'.format(count, gen)
+                imageKey = 'image-%09d' % count
+                labelKey = 'label-%09d' % count
+                pathKey = 'path-%09d' % count
+                dimKey = 'dim-%09d' % count
+
+                imageFile = name_img
+
+                imgH, imgW = img.shape[0], img.shape[1]
+                cache[imageKey] = cv2.imencode('.jpg', img)[1].tobytes()
+                cache[labelKey] = sentence.encode()
+                cache[pathKey] = imageFile.encode()
+                cache[dimKey] = np.array([imgH, imgW], dtype=np.int32).tobytes()
+                count += 1
+
+                if count % 10000 == 0:
+                    writeCache(env, cache)
+                    cache = {}
+                # if cv2.imwrite(os.path.join(out_images_save, name_img), img):
+                #     ann.write(name_img + "\t" + sentence + "\n")
                     # break
                 # else:
                 #     print("Save IMG failed")
                 #     print("FONT:", font_path)
                 #     print("SENCTENCE:", sentence)
-
-            
-                    
                 # if not count % 10000:
                 #     print(count, end='\n', flush=True)
-            ann.close()
-        print('\n===\nGenerated:', count)
+            
+    nSamples = count - 1
+    cache['num-samples'] = str(nSamples).encode()            
+    writeCache(env, cache)
+    print('\n===\nGenerated:', count)
 
-        print("\n***\nout_images_save\n", save_path)
+    print("\n***\nout_images_save\n", out_path)
 
