@@ -1,5 +1,3 @@
-tensorflow==2.2.0
-keras
 numpy
 opencv-python
 scipy

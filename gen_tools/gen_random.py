@@ -1,7 +1,48 @@
+import colorsys
 import random
-from PIL import Image
-from PIL import ImageDraw
-from PIL import ImageFont
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+
+KIND_TEXT = "text"
+
+def get_color(invert):
+    if not invert:
+        if random.random() < 0.6:
+            back_ground_color = gen_background_white_color(
+                KIND_TEXT, lower_v=240)
+        else:
+            back_ground_color = gen_background_white_color(
+                KIND_TEXT, lower_v=180)
+        character_color = gen_black_color(
+            threshold_color=70, threshold_color2=150, threshold=0.7)
+
+    else:
+        if random.random() < 0.6:
+            character_color = gen_background_white_color(
+                KIND_TEXT, lower_v=240)
+        else:
+            character_color = gen_background_white_color(
+                KIND_TEXT, lower_v=180)
+
+        back_ground_color = gen_black_color(
+            threshold_color=70, threshold_color2=150, threshold2=0.5)
+
+    return character_color, back_ground_color
+
+
+def invert_bg(img):
+    if isinstance(img, Image.Image):
+        h, s, v = img.convert('HSV').split()
+        h = (np.mean(h) + 180 + random.uniform(-5, 5)) % 360
+        s = random.randrange(90, 100)
+        v = (100 - np.mean(v) - random.uniform(-5, 5)) % 100
+
+        rgb = [int(i*255) for i in colorsys.hsv_to_rgb(h/360., s/100., v/100.)]
+
+        return rgb
+    else:
+        return False
 
 
 def gen_line_bound():
