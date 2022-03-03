@@ -5,3 +5,4 @@ imgaug
 pillow
 fonttools
 tqdm
+lmdb

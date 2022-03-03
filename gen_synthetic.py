@@ -10,6 +10,9 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from tqdm import tqdm, trange
 
 import config
+from config import *
+import logging
+from utils import *
 from gen_tools.gen_random import get_color, invert_bg
 from gen_tools.color import rgb2hex
 from gen_tools.draw_effects import *
@@ -239,15 +242,6 @@ def augment_img(img):
     return img
 
 
-def read_file(path):
-    with open(path, 'r') as input:
-        lines = input.readlines()
-    filter_lines = set()
-    for line in lines:
-        filter_lines.add(line.strip())
-    return list(filter_lines)
-
-
 def writeCache(env, cache):
     with env.begin(write=True) as txn:
         for k, v in cache.items():
@@ -284,25 +278,16 @@ if __name__ == "__main__":
     list_supported_font = get_supported_fonts(config.VOCAB, font_dict)
     using_random_font = True
 
-    dict_gen = {}
-    dict_gen['vnwords'] = read_file("vnmesevocab.txt")
-    dict_gen['wikiuni'] = read_file("unigram.txt")
-    dict_gen['wikibi'] = read_file("bigram.txt")
-    dict_gen['wikitri'] = read_file("trigram.txt")
-
-    # out_path = "/mnt/disk2/viethd/100M-SCANCED-BIGRAM/train_ocr"
-    out_path = "./test_fonts"
-    env = lmdb.open(out_path, map_size=2e+12)  # 2 Terabyte
-    print(out_path)
-
+    env = lmdb.open(OUTPUT_PATH, map_size=2e+12)  # 2 Terabyte
+    logging.info(f"START GENERATING SYNTHETIC DATA TO {OUTPUT_PATH}")
     # lmdb cache
     cache = {}
     count = 0
     for gen in dict_gen.keys():
-        out_images_save = os.path.join(out_path, "imgs")
+        out_images_save = os.path.join(OUTPUT_PATH, "imgs")
         number_sens = len(dict_gen[gen])
-        print("\n***\n{} have: {} sentence".format(gen, number_sens))
-        print('Supported font: ', len(list_supported_font))
+        logging.info("\n***\n{} have: {} sentence".format(gen, number_sens))
+        logging.info('Supported font: ', len(list_supported_font))
 
         # Uncomment to limit the number of words to gen
         # number_sens = 1000
@@ -362,6 +347,6 @@ if __name__ == "__main__":
     nSamples = count - 1
     cache['num-samples'] = str(nSamples).encode()
     writeCache(env, cache)
-    print('\n===\nGenerated:', count)
+    logging.info('\n===\nGenerated:', count)
 
-    print("\n***\nout_images_save\n", out_path)
+    logging.info("\n***\nout_images_save\n", OUTPUT_PATH)
