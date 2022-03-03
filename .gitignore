@@ -6,6 +6,7 @@ fonts/**/*.jpg
 fonts/**/*.png
 fonts/**/*.jpeg
 fonts/**/*.psd
+synthetic_data/
 
 
 ### JupyterNotebooks ###

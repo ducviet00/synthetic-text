@@ -284,7 +284,9 @@ if __name__ == "__main__":
     cache = {}
     count = 0
     for gen in dict_gen.keys():
-        out_images_save = os.path.join(OUTPUT_PATH, "imgs")
+        if SAVE_FILE:
+            out_images_save = os.path.join(OUTPUT_PATH, "imgs")
+            os.makedirs(out_images_save)
         number_sens = len(dict_gen[gen])
         logging.info("\n***\n{} have: {} sentence".format(gen, number_sens))
         logging.info('Supported font: ', len(list_supported_font))
@@ -341,8 +343,8 @@ if __name__ == "__main__":
                     writeCache(env, cache)
                     cache = {}
 
-                # while not cv2.imwrite(os.path.join(out_images_save, imageFile), img):
-                    # print("Try save img, font:", imageFile)
+                while not cv2.imwrite(os.path.join(out_images_save, imageFile), img) and SAVE_FILE:
+                    print("Try save img, font:", imageFile)
 
     nSamples = count - 1
     cache['num-samples'] = str(nSamples).encode()
