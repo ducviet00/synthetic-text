@@ -1,9 +1,41 @@
-from gen_tools.gen_random import gen_background_white_color, gen_black_color
-from gen_tools.color import *
 import random
+
 import cv2
+import numpy as np
+from skimage.draw import line_aa, disk
+
+from gen_tools.color import *
+from gen_tools.gen_random import gen_background_white_color, gen_black_color
 
 KIND_TEXT = 'text'
+
+def draw_disks(img, num_lines):
+    rows, cols = img.shape[0], img.shape[1]
+    radius = np.clip(random.gauss(1, 2), 1, 4)
+    for i in range(num_lines):
+        rr, cc = disk(
+            (random.randint(5, rows-5),
+            random.randint(10, cols-10)),
+            radius
+            )
+        img[rr, cc] = random.randint(0, 150)
+
+    return img
+
+
+def draw_lines(img, num_lines):
+    rows, cols = img.shape[0], img.shape[1]
+
+    for i in range(num_lines):
+        rr, cc, val = line_aa(
+            random.randint(5, rows-5),
+            random.randint(10, cols-10), 
+            random.randint(5, rows-5), 
+            random.randint(10, cols-10)
+            )
+        img[rr, cc, :] = val[:, np.newaxis]
+    return img
+
 
 def get_color_line(invert):
     """
@@ -197,15 +229,15 @@ def draw_table(img, x_offset, y_offset, text_width, text_height, img_w, img_h, i
         x_right, random.randint(img_h - int(y_offset/2), img_h))
     bottom_left = (x_left, y_bottom)
     tmp_random = random.random()
-    if tmp_random <= 0.7:
+    if tmp_random <= 0.0:
         pass
-    elif tmp_random <= 0.8:
+    elif tmp_random <= 0.3:
         draw_one_line(img, top_left, top_right, bottom_right,
                       bottom_left, invert=invert)
-    elif tmp_random <= 0.9:
+    elif tmp_random <= 0.5:
         draw_two_line(img, top_left, top_right, bottom_right,
                       bottom_left, invert=invert)
-    elif tmp_random <= 0.95:
+    elif tmp_random <= 0.8:
         draw_third_line(img, top_left, top_right, bottom_right,
                         bottom_left, invert=invert)
     else:

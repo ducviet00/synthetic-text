@@ -6,3 +6,4 @@ pillow
 fonttools
 tqdm
 lmdb
+scikit-image
