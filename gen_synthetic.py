@@ -1,4 +1,5 @@
 import glob
+import logging
 import os
 import random
 import string
@@ -7,17 +8,17 @@ import cv2
 import lmdb
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from skimage.transform import PiecewiseAffineTransform, warp
 from tqdm import tqdm, trange
 
 import config
 from config import *
-import logging
-from utils import *
-from gen_tools.gen_random import get_color, invert_bg
 from gen_tools.color import rgb2hex
 from gen_tools.draw_effects import *
 from gen_tools.draw_lines import *
 from gen_tools.fonts_ultis import get_supported_fonts, load_all_fonts
+from gen_tools.gen_random import get_color, invert_bg
+from utils import *
 
 KIND_TEXT = 'text'
 
@@ -156,10 +157,10 @@ def gensyn_text(sentence, max_len, font_path, w=None, h=None, rotate=False, inve
 
         text_width, text_height = font.getsize("".join(sentence))
         (text_x_offset, text_y_offset) = font.getoffset("".join(sentence))
-        y_offset = random.randint(1, 6)
-        x_offset = random.randint(1, 6)
-        y_padding = random.randint(1, 6)
-        x_padding = random.randint(1, 6)
+        y_offset = random.randint(30, 50) # add more 5*pi for piecewise_affine
+        x_offset = random.randint(40, 80)
+        y_padding = random.randint(30, 50) # add more 5*pi for piecewise_affine
+        x_padding = random.randint(40, 80)
         text_height = text_height - text_y_offset
         text_width = text_width - text_x_offset
         img_h = text_height + y_offset + y_padding
@@ -203,11 +204,6 @@ def gensyn_text(sentence, max_len, font_path, w=None, h=None, rotate=False, inve
                         shadow=shadow,
                         texture=texture)
 
-        if rotate:
-            if random.random() < 0.3:
-                angle = random.random()
-                img = img.rotate(angle, expand=True)
-
     else:
         img_w = random.uniform(h, w)
         img = np.ones([h, img_w, 3], dtype=np.uint8)
@@ -216,11 +212,43 @@ def gensyn_text(sentence, max_len, font_path, w=None, h=None, rotate=False, inve
     if augment and not is_black and not bg:
         img = augment_img(img)
 
+    # if rotate:
+    #     if random.random() < 3:
+    #         angle = random.randint(5, 30)
+    #         img = Image.fromarray(img)
+    #         img = img.rotate(angle, expand=True)
+    img = img[16:-16, :] # crop padding which was used for piecewise_affine
     return img
 
+def piecewise_affine_transform(img):
+    rows, cols = img.shape[0], img.shape[1]
+
+    src_cols = np.linspace(0, cols, random.randint(10, 20))
+    src_rows = np.linspace(0, rows, random.randint(10, 20))
+    src_rows, src_cols = np.meshgrid(src_rows, src_cols)
+    src = np.dstack([src_cols.flat, src_rows.flat])[0]
+
+    # add sinusoidal oscillation to row coordinates
+    dst_rows = src[:, 1] - np.sin(np.linspace(0, random.randint(3, 5) * np.pi, src.shape[0])) * 10
+    dst_cols = src[:, 0]
+
+    dst = np.vstack([dst_cols, dst_rows]).T
+
+
+    tform = PiecewiseAffineTransform()
+    tform.estimate(src, dst)
+
+    out_rows = img.shape[0]
+    out_cols = cols
+    out = warp(img, tform, output_shape=(out_rows, out_cols))
+    out *= 255
+    out = out.astype(np.uint8)
+
+    return out
 
 def augment_img(img):
     tmp_random = random.random()
+
     if tmp_random < 0.2:
         mean = int(np.mean(img))
         if mean <= 127:
@@ -238,6 +266,10 @@ def augment_img(img):
         img = noise_blur(img)
     else:
         img = speckle(img)
+    img = img.astype(np.uint8)
+
+    if random.random() < 0.3:
+        img = piecewise_affine_transform(img)
 
     return img
 
@@ -320,6 +352,7 @@ if __name__ == "__main__":
                                           )
                     except:
                         img = None
+                        logging.exception("FAILED")
                         break
                 if img is None:
                     continue
