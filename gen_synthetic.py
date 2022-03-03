@@ -54,7 +54,7 @@ def draw_text(img, text, xy, font_size, font, chars_color, background=False, dir
 
     draw.text((-text_x_offset + xy[0], -text_y_offset + xy[1]),
               text, font=font, fill=fill, direction=direction)
-    if texture and background:
+    if texture:
         mask = gen_pattern(mask)
         img.paste(mask, (0, 0), mask)
     tmp2 = random.random()
@@ -193,6 +193,9 @@ def gensyn_text(sentence, max_len, font_path, w=None, h=None, rotate=False, inve
         if table is True:
             draw_table(img, x_offset, y_offset, text_width,
                        text_height, img_w, img_h, invert=invert)
+            img = draw_lines(img, num_lines=random.randint(1, 3))
+        
+        img = draw_disks(img, num_lines=random.randint(8, 20))
 
         img = draw_text(img,
                         sentence,
@@ -249,26 +252,26 @@ def piecewise_affine_transform(img):
 def augment_img(img):
     tmp_random = random.random()
 
-    if tmp_random < 0.2:
+    if random.random() < 1:
         mean = int(np.mean(img))
         if mean <= 127:
             value = max(mean - 10, 0)
         else:
             value = min(mean + 10, 255)
         img = add_salt_pepper_noise(img, value)
-    elif tmp_random < 0.4:
+    if tmp_random < 0.4:
         img = noise_blur(img)
-    elif tmp_random < 0.6:
+    elif tmp_random < 0.5:
         img = noise_blur(img)
         img = speckle(img)
-    elif tmp_random < 0.8:
+    elif tmp_random < 0.6:
         img = speckle(img)
         img = noise_blur(img)
     else:
         img = speckle(img)
     img = img.astype(np.uint8)
 
-    if random.random() < 0.3:
+    if random.random() < 1:
         img = piecewise_affine_transform(img)
 
     return img
@@ -348,7 +351,7 @@ if __name__ == "__main__":
                                           augment=True,
                                           generating_test=False,
                                           shadow=True,
-                                          texture=True
+                                          texture=False
                                           )
                     except:
                         img = None
